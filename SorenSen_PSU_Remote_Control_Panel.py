@@ -236,7 +236,7 @@ def guiInit(mainApp):
     mainApp.Channel_2_Set_Current_Btn.config(command=channel_2_set_current)
     mainApp.Channel_2_Set_Voltage_Btn.config(command=channel_2_set_voltage)
     
-    mainApp.Psu_Set_Screen_Update_Interval_Btn.config()
+    mainApp.Psu_Set_Screen_Update_Interval_Btn.config(command=setUpdateInterval)
 
 def setUpdateInterval():
     global app
@@ -249,36 +249,36 @@ def channel_1_set_current():
     global PSU_Data
     
     if CONNECTION_ACTIVE is True:
-        if str(app.Channel_1_Current_Set_EntryBox.get()).isdigit() is True:
-            PSU_Data.channel_1.current_set = int(app.Channel_1_Current_Set_EntryBox.get())
-            PSU_Data.channel_1.set_current_flag = True
+        #if str(app.Channel_1_Current_Set_EntryBox.get()).isdigit() is True:#Need to find another way todo data type validation, this is not working properly.
+        PSU_Data.channel_1.current_set = float(app.Channel_1_Current_Set_EntryBox.get())
+        PSU_Data.channel_1.set_current_flag = True
 
 def channel_2_set_current():
     global app
     global PSU_Data
     
     if CONNECTION_ACTIVE is True:
-        if str(app.Channel_2_Current_Set_EntryBox.get()).isdigit() is True:
-            PSU_Data.channel_2.current_set = int(app.Channel_2_Current_Set_EntryBox.get())
-            PSU_Data.channel_2.set_current_flag = True
+        #if str(app.Channel_2_Current_Set_EntryBox.get()).isdigit() is True:
+        PSU_Data.channel_2.current_set = float(app.Channel_2_Current_Set_EntryBox.get())
+        PSU_Data.channel_2.set_current_flag = True
 
 def channel_1_set_voltage():
     global app
     global PSU_Data
     
     if CONNECTION_ACTIVE is True:
-        if str(app.Channel_1_Voltage_Set_EntryBox.get()).isdigit() is True:
-            PSU_Data.channel_1.voltage_set = int(app.Channel_1_Voltage_Set_EntryBox.get())
-            PSU_Data.channel_1.set_voltage_flag = True
-            
+        #if str(app.Channel_1_Voltage_Set_EntryBox.get()).isdigit() is True:
+        PSU_Data.channel_1.voltage_set = float(app.Channel_1_Voltage_Set_EntryBox.get())
+        PSU_Data.channel_1.set_voltage_flag = True
+        
 def channel_2_set_voltage():
     global app
     global PSU_Data
-    
+
     if CONNECTION_ACTIVE is True:
-        if str(app.Channel_2_Voltage_Set_EntryBox.get()).isdigit() is True:
-            PSU_Data.channel_2.voltage_set = int(app.Channel_2_Voltage_Set_EntryBox.get())
-            PSU_Data.channel_2.set_voltage_flag = True
+        #if str(app.Channel_2_Voltage_Set_EntryBox.get()).isdigit() is True:
+        PSU_Data.channel_2.voltage_set = float(app.Channel_2_Voltage_Set_EntryBox.get())
+        PSU_Data.channel_2.set_voltage_flag = True
 
 def channel_1_On():
     global PSU_Data
@@ -322,7 +322,7 @@ def createPsuConnection():
     global PSU
     global CONNECTION_ACTIVE
     if app.Psu_Connect_Btn['text'] == CONNECT_BTN_TEXT_FOR_STATE[0]:
-        PSU = sorensen_psu_socket_based_driver.SorensenPSUviaEth(str(app.Psu_Ip_Entry_Box.get()).strip(' '),sorensen_psu_socket_based_driver.SorensenSocketInterfaceDriver)
+        PSU = sorensen_psu_socket_based_driver.SorensenPSUviaEth(str(app.Psu_Ip_Entry_Box.get()).strip(' '),sorensen_psu_socket_based_driver.SorensenWebInterfaceDriver)
         app.Psu_Connect_Btn.config(text = CONNECT_BTN_TEXT_FOR_STATE[1])
         #write method to verify if connection was successful and set a flag
         CONNECTION_ACTIVE = True        
@@ -396,10 +396,19 @@ def communicationModule():
             PSU_Data.channel_1.voltage_measured = PSU.getVoltage_Measured(1)
             PSU_Data.channel_1.current_measured = PSU.getCurrent_Measured(1)
             PSU_Data.channel_1.channel_state = PSU.getChannelState(1)
+            
+            #app.Channel_1_Current_Label.config(text=str(PSU_Data.channel_1.current_measured)+'A')
+            #app.Channel_1_Voltage_Label.config(text=str(PSU_Data.channel_1.voltage_measured)+'V')
+            #state_of_channel_1.set(int(PSU_Data.channel_1.channel_state)) # we need to check this statement, this causing errors and thread dies because of exception.
+            
         if keepPolling_channel_2.get() is True:
             PSU_Data.channel_2.voltage_measured = PSU.getVoltage_Measured(2)
             PSU_Data.channel_2.current_measured = PSU.getCurrent_Measured(2)
             PSU_Data.channel_2.channel_state = PSU.getChannelState(2)
+            
+            #app.Channel_2_Current_Label.config(text=str(PSU_Data.channel_2.current_measured)+'A')
+            #app.Channel_2_Voltage_Label.config(text=str(PSU_Data.channel_2.voltage_measured)+'V')
+            #state_of_channel_2.set(int(PSU_Data.channel_2.channel_state)) # we need to check this statement, this causing errors and thread dies because of exception.
             
         if PSU_Data.channel_1.TurnOff_flag is True:
             PSU.channelOff(1)
@@ -429,6 +438,10 @@ def communicationModule():
             PSU.setVoltage(1,PSU_Data.channel_1.voltage_set)
             PSU_Data.channel_1.set_voltage_flag = False
         
+        if PSU_Data.channel_2.set_voltage_flag is True:
+            PSU.setVoltage(2,PSU_Data.channel_2.voltage_set)
+            PSU_Data.channel_2.set_voltage_flag = False        
+        
         #we need to make only the polling parts to refresh after certain delay rest should be continuous
         time.sleep(APP_REFRESH_INTERVAL)
     
@@ -447,13 +460,15 @@ def updatePsuDataOnScreen():
         if keepPolling_channel_1.get() is True:
             app.Channel_1_Current_Label.config(text=str(PSU_Data.channel_1.current_measured)+'A')
             app.Channel_1_Voltage_Label.config(text=str(PSU_Data.channel_1.voltage_measured)+'V')
-            state_of_channel_1.set(int(PSU_Data.channel_1.channel_state))
+            #state_of_channel_1.set(int(PSU_Data.channel_1.channel_state))
         if keepPolling_channel_2.get() is True:
             app.Channel_2_Current_Label.config(text=str(PSU_Data.channel_2.current_measured)+'A')
             app.Channel_2_Voltage_Label.config(text=str(PSU_Data.channel_2.voltage_measured)+'V')
-            state_of_channel_2.set(int(PSU_Data.channel_2.channel_state))
+            #state_of_channel_2.set(int(PSU_Data.channel_2.channel_state))
         
-        time.sleep(APP_REFRESH_INTERVAL) #since we have delay in communication module we don't need this here anymore
+        #time.sleep(APP_REFRESH_INTERVAL) #since we have delay in communication module we don't need this here anymore
+        
+        #when I used only one thread and put display update code in communication module the program was more stable.        
         
 if __name__ == "__main__":
     try:
